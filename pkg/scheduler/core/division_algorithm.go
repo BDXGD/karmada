@@ -65,16 +65,7 @@ func divideReplicasByStaticWeight(clusters []*clusterv1alpha1.Cluster, weightLis
 		allocatedReplicas += int32(desireReplicaInfos[clusterName])
 	}
 
-	if remainReplicas := replicas - allocatedReplicas; remainReplicas > 0 {
-		sortedClusters := helper.SortClusterByWeight(matchClusters)
-		for i := 0; remainReplicas > 0; i++ {
-			desireReplicaInfos[sortedClusters[i].ClusterName]++
-			remainReplicas--
-			if i == len(desireReplicaInfos) {
-				i = 0
-			}
-		}
-	}
+	getDesireReplicaInfos(int(replicas-allocatedReplicas), desireReplicaInfos, matchClusters)
 
 	for _, cluster := range clusters {
 		if _, exist := matchClusters[cluster.Name]; !exist {
@@ -89,6 +80,35 @@ func divideReplicasByStaticWeight(clusters []*clusterv1alpha1.Cluster, weightLis
 		i++
 	}
 	return targetClusters, nil
+}
+
+// getDesireReplicaInfos calculate desireReplicaInfos via the faster algorithm
+// based on the size relationship between remainReplicas and the length of desireReplicaInfos
+func getDesireReplicaInfos(remainReplicas int, desireReplicaInfos, matchClusters map[string]int64) {
+	if remainReplicas <= 0 {
+		return
+	}
+
+	sortedClusters := helper.SortClusterByWeight(matchClusters)
+	lengthOfDesireReplicaInfos := len(desireReplicaInfos)
+
+	if remainReplicas < lengthOfDesireReplicaInfos {
+		for i := 0; remainReplicas > 0; i++ {
+			if i == lengthOfDesireReplicaInfos {
+				i = 0
+			}
+			desireReplicaInfos[sortedClusters[i].ClusterName]++
+			remainReplicas--
+		}
+	} else {
+		for i := 0; i < lengthOfDesireReplicaInfos; i++ {
+			if i < remainReplicas%lengthOfDesireReplicaInfos {
+				desireReplicaInfos[sortedClusters[i].ClusterName] = int64(remainReplicas/lengthOfDesireReplicaInfos) + 1
+			} else {
+				desireReplicaInfos[sortedClusters[i].ClusterName] = int64(remainReplicas / lengthOfDesireReplicaInfos)
+			}
+		}
+	}
 }
 
 // divideReplicasByPreference assigns a total number of replicas to the selected clusters by preference according to the resource.
