@@ -18,8 +18,8 @@ type Framework interface {
 	// the given cluster.
 	RunFilterPlugins(ctx context.Context, placement *policyv1alpha1.Placement, resource *workv1alpha2.ObjectReference, clusterv1alpha1 *clusterv1alpha1.Cluster) PluginToResult
 
-	// RunScorePlugins runs the set of configured Score plugins, it returns a map of plugin name to cores
-	RunScorePlugins(ctx context.Context, placement *policyv1alpha1.Placement, clusters []*clusterv1alpha1.Cluster) (PluginToClusterScores, error)
+	// RunScorePlugins runs the set of configured Score plugins, it returns a slice of clusterScore
+	RunScorePlugins(ctx context.Context, placement *policyv1alpha1.Placement, clusters []*clusterv1alpha1.Cluster) (ClusterScoreList, error)
 }
 
 // Plugin is the parent type for all the scheduling framework plugins.

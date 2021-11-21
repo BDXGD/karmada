@@ -115,17 +115,9 @@ func (g *genericScheduler) prioritizeClusters(
 	clusters []*clusterv1alpha1.Cluster) (result framework.ClusterScoreList, err error) {
 	defer metrics.ScheduleStep(metrics.ScheduleStepScore, time.Now())
 
-	scoresMap, err := fwk.RunScorePlugins(ctx, placement, clusters)
+	result, err = fwk.RunScorePlugins(ctx, placement, clusters)
 	if err != nil {
 		return result, err
-	}
-
-	result = make(framework.ClusterScoreList, len(clusters))
-	for i := range clusters {
-		result[i] = framework.ClusterScore{Name: clusters[i].Name, Score: 0}
-		for j := range scoresMap {
-			result[i].Score += scoresMap[j][i].Score
-		}
 	}
 
 	return result, nil
@@ -180,28 +172,50 @@ func (g *genericScheduler) chooseSpreadGroup(spreadGroup *util.SpreadGroup) []*c
 			if len(clusterGroups) < spreadConstraint.MinGroups {
 				return nil
 			}
-
-			if len(clusterGroups) <= spreadConstraint.MaxGroups {
+			groupsCount := 0
+			if spreadConstraint.MaxGroups > 0 {
 				for _, v := range clusterGroups {
 					feasibleClusters = append(feasibleClusters, v...)
-				}
-				break
-			}
-
-			if spreadConstraint.MaxGroups > 0 && len(clusterGroups) > spreadConstraint.MaxGroups {
-				var groups []string
-				for group := range clusterGroups {
-					groups = append(groups, group)
-				}
-
-				for i := 0; i < spreadConstraint.MaxGroups; i++ {
-					feasibleClusters = append(feasibleClusters, clusterGroups[groups[i]]...)
+					groupsCount++
+					if groupsCount == spreadConstraint.MaxGroups {
+						break
+					}
 				}
 			}
 		}
 	}
 	return feasibleClusters
 }
+
+//func (g *genericScheduler) chooseSpreadGroup(spreadGroup *util.SpreadGroup) []*clusterv1alpha1.Cluster {
+//	var feasibleClusters []*clusterv1alpha1.Cluster
+//	for spreadConstraint, clusterGroups := range spreadGroup.GroupRecord {
+//		if spreadConstraint.SpreadByField == policyv1alpha1.SpreadByFieldCluster {
+//			if len(clusterGroups) < spreadConstraint.MinGroups {
+//				return nil
+//			}
+//
+//			if len(clusterGroups) <= spreadConstraint.MaxGroups {
+//				for _, v := range clusterGroups {
+//					feasibleClusters = append(feasibleClusters, v...)
+//				}
+//				break
+//			}
+//
+//			if spreadConstraint.MaxGroups > 0 && len(clusterGroups) > spreadConstraint.MaxGroups {
+//				var groups []string
+//				for group := range clusterGroups {
+//					groups = append(groups, group)
+//				}
+//
+//				for i := 0; i < spreadConstraint.MaxGroups; i++ {
+//					feasibleClusters = append(feasibleClusters, clusterGroups[groups[i]]...)
+//				}
+//			}
+//		}
+//	}
+//	return feasibleClusters
+//}
 
 func (g *genericScheduler) assignReplicas(clusters []*clusterv1alpha1.Cluster, replicaSchedulingStrategy *policyv1alpha1.ReplicaSchedulingStrategy, object *workv1alpha2.ResourceBindingSpec) ([]workv1alpha2.TargetCluster, error) {
 	defer metrics.ScheduleStep(metrics.ScheduleStepAssignReplicas, time.Now())

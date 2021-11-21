@@ -59,15 +59,11 @@ func calAvailableReplicas(clusters []*clusterv1alpha1.Cluster, spec *workv1alpha
 			}
 			if availableTargetClusters[i].Name == res[i].Name && availableTargetClusters[i].Replicas > res[i].Replicas {
 				availableTargetClusters[i].Replicas = res[i].Replicas
+			} else {
+				// In most cases, the target cluster max available replicas should not be MaxInt32 unless the workload is best-effort
+				// and the scheduler-estimator has not been enabled. So we set the replicas to spec.Replicas for avoiding overflow.
+				availableTargetClusters[i].Replicas = spec.Replicas
 			}
-		}
-	}
-
-	// In most cases, the target cluster max available replicas should not be MaxInt32 unless the workload is best-effort
-	// and the scheduler-estimator has not been enabled. So we set the replicas to spec.Replicas for avoiding overflow.
-	for i := range availableTargetClusters {
-		if availableTargetClusters[i].Replicas == math.MaxInt32 {
-			availableTargetClusters[i].Replicas = spec.Replicas
 		}
 	}
 
