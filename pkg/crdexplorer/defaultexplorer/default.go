@@ -5,6 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/klog/v2"
 
 	configv1alpha1 "github.com/karmada-io/karmada/pkg/apis/config/v1alpha1"
 	workv1alpha2 "github.com/karmada-io/karmada/pkg/apis/work/v1alpha2"
@@ -13,17 +14,15 @@ import (
 // DefaultExplorer contains all default operation explorer factory
 // for exploring common resource.
 type DefaultExplorer struct {
-	replicaHandlers map[schema.GroupVersionKind]replicaExplorer
-	packingHandlers map[schema.GroupVersionKind]packingFactory
-	healthyHandlers map[schema.GroupVersionKind]healthyFactory
+	replicaHandlers   map[schema.GroupVersionKind]replicaExplorer
+	retentionHandlers map[schema.GroupVersionKind]retentionExplorer
 }
 
 // NewDefaultExplorer return a new DefaultExplorer.
 func NewDefaultExplorer() *DefaultExplorer {
 	return &DefaultExplorer{
-		replicaHandlers: getAllDefaultReplicaExplorer(),
-		packingHandlers: getAllDefaultPackingExplorer(),
-		healthyHandlers: getAllDefaultHealthyExplorer(),
+		replicaHandlers:   getAllDefaultReplicaExplorer(),
+		retentionHandlers: getAllDefaultRetentionExplorer(),
 	}
 }
 
@@ -34,8 +33,15 @@ func (e *DefaultExplorer) HookEnabled(kind schema.GroupVersionKind, operationTyp
 		if _, exist := e.replicaHandlers[kind]; exist {
 			return true
 		}
+	case configv1alpha1.ExploreRetaining:
+		if _, exist := e.retentionHandlers[kind]; exist {
+			return true
+		}
+
 		// TODO(RainbowMango): more cases should be added here
 	}
+
+	klog.V(4).Infof("Hook is not enabled: %q in %q is not supported.", kind, operationType)
 	return false
 }
 
@@ -48,11 +54,12 @@ func (e *DefaultExplorer) GetReplicas(object *unstructured.Unstructured) (int32,
 	return handler(object)
 }
 
-// GetHealthy tells if the object in healthy state.
-func (e *DefaultExplorer) GetHealthy(object *unstructured.Unstructured) (bool, error) {
-	handler, exist := e.healthyHandlers[object.GroupVersionKind()]
+// Retain returns the objects that based on the "desired" object but with values retained from the "observed" object.
+func (e *DefaultExplorer) Retain(desired *unstructured.Unstructured, observed *unstructured.Unstructured) (retained *unstructured.Unstructured, err error) {
+	handler, exist := e.retentionHandlers[desired.GroupVersionKind()]
 	if !exist {
-		return false, fmt.Errorf("defalut explorer for operation %s not found", configv1alpha1.ExploreHealthy)
+		return nil, fmt.Errorf("default retain explorer for %q not found", desired.GroupVersionKind())
 	}
-	return handler(object)
+
+	return handler(desired, observed)
 }
