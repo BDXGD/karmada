@@ -356,19 +356,19 @@ func (d *ResourceDetector) LookForMatchedPolicy(object *unstructured.Unstructure
 		policyList = append(policyList, policy)
 	}
 
-	var matchedPolicies *policyv1alpha1.PropagationPolicy
+	var matchedPolicy *policyv1alpha1.PropagationPolicy
 	for _, policy := range policyList {
 		if util.ResourceMatchSelectors(object, policy.Spec.ResourceSelectors...) {
-			matchedPolicies = getHigherPriorityPropagationPolicy(matchedPolicies, policy)
+			matchedPolicy = getHigherPriorityPropagationPolicy(matchedPolicy, policy)
 		}
 	}
 
-	if matchedPolicies == nil {
+	if matchedPolicy == nil {
 		klog.V(2).Infof("no propagationpolicy match for resource(%s)", objectKey)
 		return nil, nil
 	}
-	klog.V(2).Infof("Matched policy(%s/%s) for resource(%s)", matchedPolicies.Namespace, matchedPolicies.Name, objectKey)
-	return matchedPolicies, nil
+	klog.V(2).Infof("Matched policy(%s/%s) for resource(%s)", matchedPolicy.Namespace, matchedPolicy.Name, objectKey)
+	return matchedPolicy, nil
 }
 
 func getHigherPriorityPropagationPolicy(a, b *policyv1alpha1.PropagationPolicy) *policyv1alpha1.PropagationPolicy {
@@ -406,19 +406,19 @@ func (d *ResourceDetector) LookForMatchedClusterPolicy(object *unstructured.Unst
 		policyList = append(policyList, policy)
 	}
 
-	var matchedClusterPolicies *policyv1alpha1.ClusterPropagationPolicy
+	var matchedClusterPolicy *policyv1alpha1.ClusterPropagationPolicy
 	for _, policy := range policyList {
 		if util.ResourceMatchSelectors(object, policy.Spec.ResourceSelectors...) {
-			matchedClusterPolicies = getHigherPriorityClusterPropagationPolicy(matchedClusterPolicies, policy)
+			matchedClusterPolicy = getHigherPriorityClusterPropagationPolicy(matchedClusterPolicy, policy)
 		}
 	}
 
-	if matchedClusterPolicies == nil {
+	if matchedClusterPolicy == nil {
 		klog.V(2).Infof("no propagationpolicy match for resource(%s)", objectKey)
 		return nil, nil
 	}
-	klog.V(2).Infof("Matched cluster policy(%s) for resource(%s)", matchedClusterPolicies.Name, objectKey)
-	return matchedClusterPolicies, nil
+	klog.V(2).Infof("Matched cluster policy(%s) for resource(%s)", matchedClusterPolicy.Name, objectKey)
+	return matchedClusterPolicy, nil
 }
 
 func getHigherPriorityClusterPropagationPolicy(a, b *policyv1alpha1.ClusterPropagationPolicy) *policyv1alpha1.ClusterPropagationPolicy {
