@@ -64,7 +64,6 @@ var workPredicateFn = builder.WithPredicates(predicate.Funcs{
 
 // ensureWork ensure Work to be created or updated.
 // TODO(Garrybest): clean up the code to fix cyclomatic complexity
-//nolint:gocyclo
 func ensureWork(c client.Client, workload *unstructured.Unstructured, overrideManager overridemanager.OverrideManager, binding metav1.Object, scope apiextensionsv1.ResourceScope) error {
 	var targetClusters []workv1alpha2.TargetCluster
 	switch scope {
